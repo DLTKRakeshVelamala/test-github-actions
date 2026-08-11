@@ -41,7 +41,7 @@ jobs:
           MONTH: ${{ inputs.month }}
           DRY_RUN: 'true'
         with:
-          github-token: ${{ secrets.ELEVATEDACCESS_ORGTOKEN }}
+          github-token: ${{ secrets.DTLKRAKESHVELAMALA_PAT }}
           script: |
             const run = require('./.github/scripts/release-pull-request');
             await run({ github, core });
@@ -61,7 +61,7 @@ jobs:
         env:
           MONTH: ${{ inputs.month }}
         with:
-          github-token: ${{ secrets.ELEVATEDACCESS_ORGTOKEN }}
+          github-token: ${{ secrets.DTLKRAKESHVELAMALA_PAT }}
           script: |
             const run = require('./.github/scripts/release-pull-request');
             await run({ github, core });
