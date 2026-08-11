@@ -1,0 +1,134 @@
+'use strict';
+
+const { fetchPRsForRepo, fetchReviews, mergePR, createComment, deleteBranch } = require('./github-api');
+const {
+  hasApproval,
+  hasChangesRequested,
+  checkPRAge,
+  daysSince
+} = require('./filters');
+
+async function processPR(github, core, pr, config, releaseBranch) {
+  const result = { repo: pr.repo, pr: pr.data, reason: null };
+
+  if (pr.data.head.ref !== releaseBranch) return null;
+
+  if (pr.data.base.ref !== config.baseBranch) return null;
+
+  if (!checkPRAge(pr.data, config.maxAgeDays)) {
+    result.reason = `Too old (${daysSince(pr.data.created_at)} days)`;
+    return result;
+  }
+
+  let reviews;
+  try {
+    reviews = await fetchReviews(github, config.org, pr.repo, pr.data.number);
+  } catch (e) {
+    result.reason = `Failed to fetch reviews: ${e.message}`;
+    return result;
+  }
+
+  if (hasChangesRequested(reviews)) {
+    result.reason = 'Changes requested';
+    return result;
+  }
+
+  if (!hasApproval(reviews)) {
+    result.reason = 'Not approved';
+    return result;
+  }
+
+  if (config.dryRun) {
+    core.info(`🔍 [Dry Run] Would merge ${config.org}/${pr.repo}#${pr.data.number}`);
+    return { pending: true, repo: pr.repo, pr: pr.data };
+  }
+
+  try {
+    await createComment(
+      github,
+      config.org,
+      pr.repo,
+      pr.data.number,
+      'Merging this PR as part of the monthly release via Github Actions with the workflow\n\n> This is an auto generated comment by Github Action workflow `Release PRs`  '
+    );
+  } catch (e) {
+    core.warning(`Failed to post comment on ${config.org}/${pr.repo}#${pr.data.number}: ${e.message}`);
+  }
+
+  try {
+    const mergeResult = await mergePR(
+      github,
+      config.org,
+      pr.repo,
+      pr.data.number,
+      config.mergeMethod
+    );
+    core.info(`✅ Merged ${config.org}/${pr.repo}#${pr.data.number}`);
+
+    const sourceBranch = pr.data.head.ref;
+    try {
+      await deleteBranch(github, config.org, pr.repo, sourceBranch);
+      core.info(`🗑️ Deleted branch ${sourceBranch} in ${pr.repo}`);
+    } catch (e) {
+      core.warning(`Failed to delete branch ${sourceBranch} in ${pr.repo}: ${e.message}`);
+    }
+
+    return {
+      merged: true,
+      repo: pr.repo,
+      pr: pr.data,
+      sha: mergeResult.data.sha.slice(0, 7)
+    };
+  } catch (e) {
+    result.reason = `Merge failed: ${e.message}`;
+    core.warning(`Failed to merge ${config.org}/${pr.repo}#${pr.data.number}: ${e.message}`);
+    return result;
+  }
+}
+
+async function scanRepo(github, core, config, repo, releaseBranch) {
+  core.info(`Scanning ${config.org}/${repo} ...`);
+
+  let prs;
+  try {
+    prs = await fetchPRsForRepo(github, core, config.org, repo);
+  } catch (e) {
+    return { merged: [], skipped: [], errors: [{ repo, error: e.message }] };
+  }
+
+  const merged = [];
+  const pending = [];
+  const skipped = [];
+
+  for (const pr of prs) {
+    const result = await processPR(github, core, { repo, data: pr }, config, releaseBranch);
+    if (!result) continue;
+
+    if (result.pending) {
+      pending.push({
+        repo: result.repo,
+        number: result.pr.number,
+        title: result.pr.title,
+        branch: result.pr.head.ref
+      });
+    } else if (result.merged) {
+      merged.push({
+        repo: result.repo,
+        number: result.pr.number,
+        title: result.pr.title,
+        branch: result.pr.head.ref,
+        sha: result.sha
+      });
+    } else {
+      skipped.push({
+        repo: result.repo,
+        number: result.pr.number,
+        reason: result.reason
+      });
+    }
+  }
+
+  return { merged, pending, skipped, errors: [] };
+}
+
+module.exports = { processPR, scanRepo };

@@ -1,0 +1,67 @@
+name: Release PRs
+
+env:
+  ORG: DLTKRakeshVelamala
+  TEAM_SLUG: costpoint-operations
+  REPO_ALLOWLIST: ${{ vars.REPO_ALLOWLIST }}
+  BASE_BRANCH: main
+  MAX_AGE_DAYS: 30
+  MERGE_METHOD: merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Release month (MMM-YYYY format, e.g., Aug-2026)'
+        type: string
+        default: ''
+
+# Note: contents:write + pull-requests:write is what pulls.merge actually requires,
+# but this block only governs the default GITHUB_TOKEN. The merge step below
+# authenticates with secrets.ELEVATEDACCESS_ORGTOKEN instead, so authorization
+# for the API calls comes from that PAT's scopes, not from this block.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scan:
+    name: Scan Release PRs (Dry Run)
+    runs-on: ubuntu-latest
+    outputs:
+      pending_count: ${{ steps.scan.outputs.pending_count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Scan PRs that will be merged
+        id: scan
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          MONTH: ${{ inputs.month }}
+          DRY_RUN: 'true'
+        with:
+          github-token: ${{ secrets.ELEVATEDACCESS_ORGTOKEN }}
+          script: |
+            const run = require('./.github/scripts/release-pull-request');
+            await run({ github, core });
+
+  merge:
+    name: Merge Release PRs
+    needs: scan
+    if: needs.scan.outputs.pending_count > 0
+    runs-on: ubuntu-latest
+    environment: release-approval
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Merge approved release PRs
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          MONTH: ${{ inputs.month }}
+        with:
+          github-token: ${{ secrets.ELEVATEDACCESS_ORGTOKEN }}
+          script: |
+            const run = require('./.github/scripts/release-pull-request');
+            await run({ github, core });
