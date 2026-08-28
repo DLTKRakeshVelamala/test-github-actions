@@ -1,7 +1,7 @@
 name: Release PRs
 
 env:
-  ORG: DLTKEngineering
+  ORG: DLTKRakeshVelamala
   TEAM_SLUG: costpoint-operations
   REPO_ALLOWLIST: ${{ vars.REPO_ALLOWLIST }}
   BASE_BRANCH: master
