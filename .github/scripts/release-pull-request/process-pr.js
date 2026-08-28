@@ -96,7 +96,7 @@ async function scanRepo(github, core, config, repo, releaseBranch) {
   try {
     prs = await fetchPRsForRepo(github, core, config.org, repo);
   } catch (e) {
-    return { merged: [], skipped: [], errors: [{ repo, error: e.message }] };
+    return { merged: [], pending: [], skipped: [], errors: [{ repo, error: e.message }] };
   }
 
   const merged = [];
