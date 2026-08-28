@@ -4,7 +4,7 @@ env:
   ORG: DLTKRakeshVelamala
   TEAM_SLUG: costpoint-operations
   REPO_ALLOWLIST: ${{ vars.REPO_ALLOWLIST }}
-  BASE_BRANCH: master
+  BASE_BRANCH: main
   MAX_AGE_DAYS: 30
   MERGE_METHOD: merge
 
