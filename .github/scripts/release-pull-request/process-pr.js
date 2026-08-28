@@ -41,9 +41,13 @@ async function processPR(github, core, pr, config, releaseBranch) {
     await approvePR(github, config.org, pr.repo, pr.data.number);
     core.info(`✅ Approved ${config.org}/${pr.repo}#${pr.data.number}`);
   } catch (e) {
-    result.reason = `Approve failed: ${e.message}`;
-    core.warning(`Failed to approve ${config.org}/${pr.repo}#${pr.data.number}: ${e.message}`);
-    return result;
+    if (e.message && e.message.includes('Can not approve your own pull request')) {
+      core.warning(`Skipping self-approval for ${config.org}/${pr.repo}#${pr.data.number} — proceeding to merge`);
+    } else {
+      result.reason = `Approve failed: ${e.message}`;
+      core.warning(`Failed to approve ${config.org}/${pr.repo}#${pr.data.number}: ${e.message}`);
+      return result;
+    }
   }
 
   try {
