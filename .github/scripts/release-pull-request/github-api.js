@@ -25,6 +25,15 @@ async function fetchReviews(github, org, repo, pullNumber) {
   });
 }
 
+async function approvePR(github, org, repo, pullNumber) {
+  return await github.rest.pulls.createReview({
+    owner: org,
+    repo,
+    pull_number: pullNumber,
+    event: 'APPROVE'
+  });
+}
+
 async function mergePR(github, org, repo, pullNumber, mergeMethod) {
   return await github.rest.pulls.merge({
     owner: org,
@@ -80,4 +89,4 @@ async function resolveRepoList(github, core, org, teamSlug, repoAllowlist) {
   return fetchTeamRepos(github, core, org, teamSlug);
 }
 
-module.exports = { fetchPRsForRepo, fetchReviews, mergePR, createComment, deleteBranch, fetchTeamRepos, resolveRepoList };
+module.exports = { fetchPRsForRepo, fetchReviews, approvePR, mergePR, createComment, deleteBranch, fetchTeamRepos, resolveRepoList };
