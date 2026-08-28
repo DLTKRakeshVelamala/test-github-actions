@@ -21,7 +21,7 @@ function buildSummaryReport(core, config, releaseBranch, repos, allResults) {
   const totalErrors = allResults.errors.length;
 
   const s = core.summary
-    .addHeading('🚀 Auto-merge Release PRs Report')
+    .addHeading('🚀 Release PRs Report')
     .addRaw(
       `\n> **Org / Team:** \`${config.org}/${config.teamSlug}\`` +
       ` &nbsp;|&nbsp; **Release Branch:** \`${releaseBranch}\`` +
