@@ -42,20 +42,25 @@ async function processPR(github, core, pr, config, releaseBranch) {
     core.info(`✅ Approved ${config.org}/${pr.repo}#${pr.data.number}`);
     
   } catch (e) {
-     const apiMessage = e?.response?.data?.message;
-     const apiErrors = e?.response?.data?.errors || [];
-     const errMsg = apiMessage || e?.message || String(e);
-     const isSelfApproval =
-       /approve your own pull request/i.test(errMsg) ||
-       apiErrors.some(err => /approve your own pull request/i.test(err.message || ''));
+    const apiErrors = e?.response?.data?.errors || [];
+    const isSelfApproval =
+      /approve your own pull request/i.test(e?.message || '') ||
+      /approve your own pull request/i.test(e?.response?.data?.message || '') ||
+      apiErrors.some(err => /approve your own pull request/i.test(err.message || ''));
 
-     if (isSelfApproval) {
+    if (isSelfApproval) {
       core.warning(`Skipping self-approval for ${config.org}/${pr.repo}#${pr.data.number} — proceeding to merge`);
-     } else {
-      result.reason = `Approve failed: ${errMsg}`;
-       core.warning(`Failed to approve ${config.org}/${pr.repo}#${pr.data.number}: ${errMsg}`);
-       return result;
-     }
+    } else {
+      let richMsg = e?.message || String(e);
+      if (apiErrors.length) {
+        richMsg += ': ' + apiErrors.map(err => `"${err.message || JSON.stringify(err)}"`).join(', ');
+      }
+      const docsUrl = e?.response?.data?.documentation_url;
+      if (docsUrl) richMsg += ` - ${docsUrl}`;
+      result.reason = `Approve failed: ${richMsg}`;
+      core.warning(`Failed to approve ${config.org}/${pr.repo}#${pr.data.number}: ${richMsg}`);
+      return result;
+    }
   }
 
   try {
