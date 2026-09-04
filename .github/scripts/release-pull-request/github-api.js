@@ -30,7 +30,8 @@ async function approvePR(github, org, repo, pullNumber) {
     owner: org,
     repo,
     pull_number: pullNumber,
-    event: 'APPROVE'
+    event: 'APPROVE',
+    body: `Approved automatically by the Release PRs workflow (run #${process.env.GITHUB_RUN_ID}).`
   });
 }
 

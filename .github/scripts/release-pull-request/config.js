@@ -6,8 +6,8 @@ const PAGINATE_LIMIT = 100;
 
 function currentMonth() {
   const d = new Date();
-  const mon = d.toLocaleString('en-US', { month: 'short' });
-  return `${mon}-${d.getFullYear()}`;
+  const mon = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  return `${mon}-${d.getUTCFullYear()}`;
 }
 
 function loadConfig() {

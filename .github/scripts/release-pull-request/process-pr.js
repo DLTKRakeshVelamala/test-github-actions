@@ -40,14 +40,22 @@ async function processPR(github, core, pr, config, releaseBranch) {
   try {
     await approvePR(github, config.org, pr.repo, pr.data.number);
     core.info(`✅ Approved ${config.org}/${pr.repo}#${pr.data.number}`);
+    
   } catch (e) {
-    if (e.message && e.message.includes('Can not approve your own pull request')) {
+     const apiMessage = e?.response?.data?.message;
+     const apiErrors = e?.response?.data?.errors || [];
+     const errMsg = apiMessage || e?.message || String(e);
+     const isSelfApproval =
+       /approve your own pull request/i.test(errMsg) ||
+       apiErrors.some(err => /approve your own pull request/i.test(err.message || ''));
+
+     if (isSelfApproval) {
       core.warning(`Skipping self-approval for ${config.org}/${pr.repo}#${pr.data.number} — proceeding to merge`);
-    } else {
-      result.reason = `Approve failed: ${e.message}`;
-      core.warning(`Failed to approve ${config.org}/${pr.repo}#${pr.data.number}: ${e.message}`);
-      return result;
-    }
+     } else {
+      result.reason = `Approve failed: ${errMsg}`;
+       core.warning(`Failed to approve ${config.org}/${pr.repo}#${pr.data.number}: ${errMsg}`);
+       return result;
+     }
   }
 
   try {
